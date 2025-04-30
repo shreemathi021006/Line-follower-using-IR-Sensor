@@ -1,0 +1,86 @@
+CODE 
+
+#include <AFMotor.h>
+
+AF_DCMotor M_l(1, MOTOR12_1KHZ);
+AF_DCMotor M_r(3, MOTOR34_1KHZ);
+
+int irPins[5] = {14, 15, 16, 18, 19};
+int weights[5] = {2,1,0,-1,-2};
+
+int baseSpeed = 80;
+float Kp = 55;
+float Kd = 10;
+float ki = 1;
+
+
+
+
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < 5; i++) {
+    pinMode(irPins[i], INPUT);
+   
+  }
+}
+
+void loop() {
+  int numerator = 0;
+  int denominator = 0;
+  float pid = 0;
+  float error = 0;
+  float prev_error = 0;
+  float integral = 0;
+
+  
+  for (int i = 0; i < 5; i++) {
+    int sensorValue = digitalRead(irPins[i]);
+    numerator += sensorValue * weights[i];
+    denominator += sensorValue;
+   
+   
+  }
+
+  if (denominator == 0) {
+    numerator =0;
+    denominator = 0;
+    error = 0;
+    pid = 0;
+    // No line detected
+  } else {
+    error = (float)numerator / denominator;
+    float derivative = error - prev_error;
+    float integration = error + prev_error;
+     pid = Kp * error + Kd * derivative + ki*integration;
+  }
+ if (numerator == 0 && denominator ==0 ) {
+error = 0;
+  pid = 0;
+ }
+  else { error = (float)numerator / denominator;
+    float derivative = error - prev_error;
+    float integration = error + prev_error;
+     pid = Kp * error + Kd * derivative + ki*integration;
+ }
+ 
+  if (pid == 0) {
+    int leftSpeed = 0;
+    int rightSpeed = 0;
+  }
+  int leftSpeed = baseSpeed + pid;
+  int rightSpeed = baseSpeed - pid;
+
+
+  leftSpeed = constrain(leftSpeed, 0, 255);
+  rightSpeed = constrain(rightSpeed, 0, 255);
+
+
+  M_l.setSpeed(rightSpeed);
+  M_r.setSpeed(leftSpeed);
+  M_l.run(FORWARD);
+  M_r.run(FORWARD);
+
+
+  prev_error = error;
+
+}
