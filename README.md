@@ -1,28 +1,84 @@
-# Line-follower-using-IR-Sensor
-I built a line follower using an acrylic chassis 🚗, L293D motor shield 💡, Arduino Uno 🧠, switch, and Li-ion battery 🔋. Coded with Arduino using PID algorithm 🧮, it smoothly followed the black line 🖤 with accurate turns and speed control. Simple setup, smart performance! 😍
+#include <AFMotor.h>
 
-🔍 Line Follower Robot (PID-Based)
+AF_DCMotor M_l(1, MOTOR12_1KHZ);
+AF_DCMotor M_r(3, MOTOR34_1KHZ);
 
-This project showcases a basic yet effective **line follower robot** using minimal components and the power of **PID (Proportional-Integral-Derivative) control**. The robot is designed to follow a black line on a white surface with smooth turns and precision, making it a great introduction to robotics and control systems.  
+int irPins[5] = {14, 15, 16, 18, 19};
+int weights[5] = {2,1,0,-1,-2};
 
-🛠️ Components Used
+int baseSpeed = 80;
+float Kp = 55;
+float Kd = 10;
+float ki = 1;
 
-- **Acrylic chassis** 🚗 for the body  
-- **L293D Motor Shield** 💡 for motor control  
-- **Arduino Uno** 🧠 as the microcontroller  
-- **Li-ion battery** 🔋 as the power source  
-- **Power switch** to toggle the system  
 
-These components were selected for their availability, affordability, and simplicity for beginner-friendly builds.
 
- 🧮 PID Algorithm in Action
 
-The heart of this project lies in the **PID algorithm**, which adjusts the motor speeds based on the position of the robot relative to the line. The sensor readings are converted into error values, and the PID logic ensures that the robot corrects its path dynamically. This results in **smoother movement**, fewer jerks, and **better stability** even on curves.
+void setup() {
+  Serial.begin(9600);
+  for (int i = 0; i < 5; i++) {
+    pinMode(irPins[i], INPUT);
+   
+  }
+}
 
-💻 Arduino Programming
+void loop() {
+  int numerator = 0;
+  int denominator = 0;
+  float pid = 0;
+  float error = 0;
+  float prev_error = 0;
+  float integral = 0;
 
-The robot is programmed using **standard Arduino IDE**. The code reads sensor inputs, calculates PID terms (P, I, and D), and adjusts the motor speeds accordingly using PWM signals. The use of PID makes the robot much more responsive and accurate compared to basic if-else logic-based followers.
+  
+  for (int i = 0; i < 5; i++) {
+    int sensorValue = digitalRead(irPins[i]);
+    numerator += sensorValue * weights[i];
+    denominator += sensorValue;
+   
+   
+  }
 
- 🚀 Final Output
+  if (denominator == 0) {
+    numerator =0;
+    denominator = 0;
+    error = 0;
+    pid = 0;
+    // No line detected
+  } else {
+    error = (float)numerator / denominator;
+    float derivative = error - prev_error;
+    float integration = error + prev_error;
+     pid = Kp * error + Kd * derivative + ki*integration;
+  }
+ if (numerator == 0 && denominator ==0 ) {
+error = 0;
+  pid = 0;
+ }
+  else { error = (float)numerator / denominator;
+    float derivative = error - prev_error;
+    float integration = error + prev_error;
+     pid = Kp * error + Kd * derivative + ki*integration;
+ }
+ 
+  if (pid == 0) {
+    int leftSpeed = 0;
+    int rightSpeed = 0;
+  }
+  int leftSpeed = baseSpeed + pid;
+  int rightSpeed = baseSpeed - pid;
 
-Once powered on, the robot detects the black line and follows it with great stability. It adjusts speed and direction as per the PID control, showing consistent performance. This project is a fun and rewarding way to learn about control algorithms, embedded programming, and basic electronics!
+
+  leftSpeed = constrain(leftSpeed, 0, 255);
+  rightSpeed = constrain(rightSpeed, 0, 255);
+
+
+  M_l.setSpeed(rightSpeed);
+  M_r.setSpeed(leftSpeed);
+  M_l.run(FORWARD);
+  M_r.run(FORWARD);
+
+
+  prev_error = error;
+
+}
